@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Virtual Hug for My Best Friend</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <style>
+        body { margin: 0; background: #0a0a0a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; color: white; }
+        #video-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        canvas { position: absolute; transform: scaleX(-1); }
+        video { display: none; }
+        
+        #overlay {
+            position: absolute;
+            z-index: 10;
+            text-align: center;
+            pointer-events: none;
+            transition: opacity 0.8s ease;
+            width: 80%;
+        }
+
+        .message-box {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        h1 { font-size: 2.5rem; margin-bottom: 1rem; color: #ffd700; }
+        p { font-size: 1.2rem; line-height: 1.6; }
+
+        .instruction {
+            position: absolute;
+            bottom: 50px;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+<div id="video-container">
+    <video id="input_video"></video>
+    <canvas id="output_canvas"></canvas>
+    
+    <div id="overlay">
+        <div id="hug-prompt" class="instruction">Bring both hands together for a birthday hug...</div>
+        <div id="birthday-card" class="message-box">
+            <h1>Happy Birthday! 🎂</h1>
+            <p>They say a hug is a handshake from the heart. Since I can't be there to give you one in person right now, I built this for you.</p>
+            <p><strong>To my best friend:</strong> Wherever I am today and whatever I’ve achieved, so much of that credit goes to you. Your support has been my backbone.</p>
+            <p>I’m not going anywhere. I’m staying right here in your corner, always. ❤️</p>
+        </div>
+    </div>
+</div>
+
+<script>
+const videoElement = document.getElementById('input_video');
+const canvasElement = document.getElementById('output_canvas');
+const canvasCtx = canvasElement.getContext('2d');
+const card = document.getElementById('birthday-card');
+const prompt = document.getElementById('hug-prompt');
+
+function onResults(results) {
+    canvasElement.width = window.innerWidth;
+    canvasElement.height = window.innerHeight;
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    // Draw hand tracking points (optional, for visual feedback)
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        for (const landmarks of results.multiHandLandmarks) {
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#ffd700', lineWidth: 2});
+            drawLandmarks(canvasCtx, landmarks, {color: '#ffffff', lineWidth: 1, radius: 3});
+        }
+
+        // Check if two hands are detected and "crossing" or close
+        if (results.multiHandLandmarks.length >= 2) {
+            const hand1 = results.multiHandLandmarks[0][0]; // Wrist of hand 1
+            const hand2 = results.multiHandLandmarks[1][0]; // Wrist of hand 2
+            
+            const distance = Math.sqrt(Math.pow(hand1.x - hand2.x, 2) + Math.pow(hand1.y - hand2.y, 2));
+
+            if (distance < 0.2) { // "Hug" threshold
+                card.style.display = 'block';
+                prompt.style.display = 'none';
+                canvasCtx.fillStyle = "rgba(255, 215, 0, 0.1)"; // Glow effect
+                canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+            }
+        }
+    }
+    canvasCtx.restore();
+}
+
+const hands = new Hands({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+});
+hands.setOptions({
+    maxNumHands: 2,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+});
+hands.onResults(onResults);
+
+const camera = new Camera(videoElement, {
+    onFrame: async () => {
+        await hands.send({image: videoElement});
+    },
+    width: 1280,
+    height: 720
+});
+camera.start();
+</script>
+</body>
+</html>
