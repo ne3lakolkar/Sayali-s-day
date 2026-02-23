@@ -11,36 +11,14 @@
         body { margin: 0; background: #0a0a0a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; color: white; }
         #video-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
         canvas { position: absolute; transform: scaleX(-1); }
+        #fireworks_canvas { pointer-events: none; transform: none; z-index: 5; }
         video { display: none; }
-        
-        #overlay {
-            position: absolute;
-            z-index: 10;
-            text-align: center;
-            pointer-events: none;
-            transition: opacity 0.8s ease;
-            width: 80%;
-        }
-
-        .message-box {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 2rem;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            display: none;
-        }
-
+        #overlay { position: absolute; z-index: 10; text-align: center; pointer-events: none; transition: opacity 0.8s ease; width: 80%; }
+        .message-box { background: rgba(0, 0, 0, 0.8); padding: 2.5rem; border-radius: 20px; border: 1px solid rgba(255, 215, 0, 0.3); backdrop-filter: blur(15px); display: none; box-shadow: 0 0 30px rgba(255, 215, 0, 0.1); }
         h1 { font-size: 2.5rem; margin-bottom: 1rem; color: #ffd700; }
-        p { font-size: 1.2rem; line-height: 1.6; }
-
-        .instruction {
-            position: absolute;
-            bottom: 50px;
-            font-size: 1.1rem;
-            letter-spacing: 1px;
-            opacity: 0.8;
-        }
+        p { font-size: 1.1rem; line-height: 1.6; font-weight: 300; }
+        .instruction { position: absolute; bottom: 50px; font-size: 1rem; letter-spacing: 2px; opacity: 0.6; text-transform: uppercase; }
+        .heart-hint { margin-top: 15px; font-size: 0.9rem; color: #ff6b6b; display: none; }
     </style>
 </head>
 <body>
@@ -48,15 +26,16 @@
 <div id="video-container">
     <video id="input_video"></video>
     <canvas id="output_canvas"></canvas>
-    
+    <canvas id="fireworks_canvas"></canvas>
     <div id="overlay">
         <div id="hug-prompt" class="instruction">Bring both hands together for a birthday hug...</div>
         <div id="birthday-card" class="message-box">
             <h1>Happy Birthday! 🎂</h1>
             <p>They say a hug is a handshake from the heart. Since I can't be there to give you one in person right now, I built this for you.</p>
             <p><strong>To my best friend:</strong> Wherever I am today and whatever I’ve achieved, so much of that credit goes to you. Your support has been my backbone.</p>
-            <p>I’m not going anywhere. I’m staying right here in your corner, always. ❤️. I’m so lucky to have a best friend who is basically my unofficial life consultant. I promise to keep being the person you can call at 3 AM, and I promise to keep showing up, no matter how many miles or time zones are between us. You're stuck with me
-            </p>
+            <p>I’m not going anywhere. I’m staying right here in your corner, always. ❤️</p>
+            <p>I’m so lucky to have a best friend who is basically my unofficial life consultant. I promise to keep being the person you can call at 3 AM, and I promise to keep showing up, no matter how many miles or time zones are between us. You're stuck with me.</p>
+            <div id="heart-hint" class="heart-hint">Try making a heart with your hands 🫶</div>
         </div>
     </div>
 </div>
@@ -65,35 +44,116 @@
 const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
+const fwCanvas = document.getElementById('fireworks_canvas');
+const fwCtx = fwCanvas.getContext('2d');
 const card = document.getElementById('birthday-card');
 const prompt = document.getElementById('hug-prompt');
+const heartHint = document.getElementById('heart-hint');
+
+let fireworks = [];
+let isHeartDetected = false;
+
+class Firework {
+    constructor() {
+        this.x = Math.random() * fwCanvas.width;
+        this.y = fwCanvas.height;
+        this.sx = Math.random() * 3 - 1.5;
+        this.sy = Math.random() * -3 - 3;
+        this.size = Math.random() * 2 + 1;
+        this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        this.particles = [];
+        this.exploded = false;
+    }
+    update() {
+        if (!this.exploded) {
+            this.x += this.sx;
+            this.y += this.sy;
+            if (this.sy > -0.5) {
+                this.explode();
+            }
+            this.sy += 0.05;
+        }
+        this.particles.forEach((p, i) => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.opacity -= 0.01;
+            if (p.opacity <= 0) this.particles.splice(i, 1);
+        });
+    }
+    explode() {
+        this.exploded = true;
+        for (let i = 0; i < 50; i++) {
+            this.particles.push({
+                x: this.x, y: this.y,
+                vx: Math.random() * 6 - 3,
+                vy: Math.random() * 6 - 3,
+                opacity: 1,
+                color: this.color
+            });
+        }
+    }
+    draw() {
+        if (!this.exploded) {
+            fwCtx.fillStyle = this.color;
+            fwCtx.beginPath();
+            fwCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            fwCtx.fill();
+        }
+        this.particles.forEach(p => {
+            fwCtx.fillStyle = p.color;
+            fwCtx.globalAlpha = p.opacity;
+            fwCtx.beginPath();
+            fwCtx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+            fwCtx.fill();
+        });
+        fwCtx.globalAlpha = 1;
+    }
+}
+
+function animateFireworks() {
+    fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+    if (isHeartDetected && Math.random() < 0.1) fireworks.push(new Firework());
+    fireworks.forEach((f, i) => {
+        f.update();
+        f.draw();
+        if (f.exploded && f.particles.length === 0) fireworks.splice(i, 1);
+    });
+    requestAnimationFrame(animateFireworks);
+}
+
+function getDistance(p1, p2) {
+    return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+}
 
 function onResults(results) {
-    canvasElement.width = window.innerWidth;
-    canvasElement.height = window.innerHeight;
+    canvasElement.width = fwCanvas.width = window.innerWidth;
+    canvasElement.height = fwCanvas.height = window.innerHeight;
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    
-    // Draw hand tracking points (optional, for visual feedback)
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        for (const landmarks of results.multiHandLandmarks) {
-            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#ffd700', lineWidth: 2});
-            drawLandmarks(canvasCtx, landmarks, {color: '#ffffff', lineWidth: 1, radius: 3});
+
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length >= 2) {
+        const hand1 = results.multiHandLandmarks[0];
+        const hand2 = results.multiHandLandmarks[1];
+
+        const hugDist = getDistance(hand1[0], hand2[0]);
+        if (hugDist < 0.2) {
+            card.style.display = 'block';
+            prompt.style.display = 'none';
+            heartHint.style.display = 'block';
         }
 
-        
-        if (results.multiHandLandmarks.length >= 2) {
-            const hand1 = results.multiHandLandmarks[0][0]; 
-            const hand2 = results.multiHandLandmarks[1][0];  
-            
-            const distance = Math.sqrt(Math.pow(hand1.x - hand2.x, 2) + Math.pow(hand1.y - hand2.y, 2));
+        const indexDist = getDistance(hand1[8], hand2[8]);
+        const thumbDist = getDistance(hand1[4], hand2[4]);
 
-            if (distance < 0.2) { 
-                card.style.display = 'block';
-                prompt.style.display = 'none';
-                canvasCtx.fillStyle = "rgba(255, 215, 0, 0.1)"; // 
-                canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
-            }
+        if (indexDist < 0.08 && thumbDist < 0.08) {
+            isHeartDetected = true;
+        } else {
+            isHeartDetected = false;
+        }
+
+        for (const landmarks of results.multiHandLandmarks) {
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: isHeartDetected ? '#ff6b6b' : '#ffd700', lineWidth: 2});
+            drawLandmarks(canvasCtx, landmarks, {color: '#ffffff', lineWidth: 1, radius: 2});
         }
     }
     canvasCtx.restore();
@@ -102,22 +162,15 @@ function onResults(results) {
 const hands = new Hands({
     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
 });
-hands.setOptions({
-    maxNumHands: 2,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.5,
-    minTrackingConfidence: 0.5
-});
+hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 hands.onResults(onResults);
 
 const camera = new Camera(videoElement, {
-    onFrame: async () => {
-        await hands.send({image: videoElement});
-    },
-    width: 1280,
-    height: 720
+    onFrame: async () => { await hands.send({image: videoElement}); },
+    width: 1280, height: 720
 });
 camera.start();
+animateFireworks();
 </script>
 </body>
 </html>
