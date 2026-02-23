@@ -14,11 +14,26 @@
         #fireworks_canvas { pointer-events: none; transform: none; z-index: 5; }
         video { display: none; }
         #overlay { position: absolute; z-index: 10; text-align: center; pointer-events: none; transition: opacity 0.8s ease; width: 80%; }
-        .message-box { background: rgba(0, 0, 0, 0.8); padding: 2.5rem; border-radius: 20px; border: 1px solid rgba(255, 215, 0, 0.3); backdrop-filter: blur(15px); display: none; box-shadow: 0 0 30px rgba(255, 215, 0, 0.1); }
+        .message-box { background: rgba(0, 0, 0, 0.85); padding: 2.5rem; border-radius: 20px; border: 1px solid rgba(255, 215, 0, 0.3); backdrop-filter: blur(15px); display: none; box-shadow: 0 0 30px rgba(255, 215, 0, 0.1); pointer-events: auto; }
         h1 { font-size: 2.5rem; margin-bottom: 1rem; color: #ffd700; }
         p { font-size: 1.1rem; line-height: 1.6; font-weight: 300; }
         .instruction { position: absolute; bottom: 50px; font-size: 1rem; letter-spacing: 2px; opacity: 0.6; text-transform: uppercase; }
         .heart-hint { margin-top: 15px; font-size: 0.9rem; color: #ff6b6b; display: none; }
+        
+        #fireworks-btn {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: transparent;
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #fireworks-btn:hover { background: #ffd700; color: #000; box-shadow: 0 0 15px #ffd700; }
     </style>
 </head>
 <body>
@@ -36,6 +51,7 @@
             <p>I’m not going anywhere. I’m staying right here in your corner, always. ❤️</p>
             <p>I’m so lucky to have a best friend who is basically my unofficial life consultant. I promise to keep being the person you can call at 3 AM, and I promise to keep showing up, no matter how many miles or time zones are between us. You're stuck with me.</p>
             <div id="heart-hint" class="heart-hint">Try making a heart with your hands 🫶</div>
+            <button id="fireworks-btn">Click for Magic 🎆</button>
         </div>
     </div>
 </div>
@@ -49,9 +65,16 @@ const fwCtx = fwCanvas.getContext('2d');
 const card = document.getElementById('birthday-card');
 const prompt = document.getElementById('hug-prompt');
 const heartHint = document.getElementById('heart-hint');
+const fwBtn = document.getElementById('fireworks-btn');
 
 let fireworks = [];
 let isHeartDetected = false;
+let manualFireworks = false;
+
+fwBtn.addEventListener('click', () => {
+    manualFireworks = !manualFireworks;
+    fwBtn.innerText = manualFireworks ? "Stop the Magic ✨" : "Click for Magic 🎆";
+});
 
 class Firework {
     constructor() {
@@ -68,9 +91,7 @@ class Firework {
         if (!this.exploded) {
             this.x += this.sx;
             this.y += this.sy;
-            if (this.sy > -0.5) {
-                this.explode();
-            }
+            if (this.sy > -0.5) { this.explode(); }
             this.sy += 0.05;
         }
         this.particles.forEach((p, i) => {
@@ -112,7 +133,7 @@ class Firework {
 
 function animateFireworks() {
     fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
-    if (isHeartDetected && Math.random() < 0.1) fireworks.push(new Firework());
+    if ((isHeartDetected || manualFireworks) && Math.random() < 0.1) fireworks.push(new Firework());
     fireworks.forEach((f, i) => {
         f.update();
         f.draw();
@@ -145,11 +166,7 @@ function onResults(results) {
         const indexDist = getDistance(hand1[8], hand2[8]);
         const thumbDist = getDistance(hand1[4], hand2[4]);
 
-        if (indexDist < 0.08 && thumbDist < 0.08) {
-            isHeartDetected = true;
-        } else {
-            isHeartDetected = false;
-        }
+        isHeartDetected = (indexDist < 0.08 && thumbDist < 0.08);
 
         for (const landmarks of results.multiHandLandmarks) {
             drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: isHeartDetected ? '#ff6b6b' : '#ffd700', lineWidth: 2});
