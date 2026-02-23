@@ -81,17 +81,17 @@ function onResults(results) {
             drawLandmarks(canvasCtx, landmarks, {color: '#ffffff', lineWidth: 1, radius: 3});
         }
 
-        // Check if two hands are detected and "crossing" or close
+        
         if (results.multiHandLandmarks.length >= 2) {
-            const hand1 = results.multiHandLandmarks[0][0]; // Wrist of hand 1
-            const hand2 = results.multiHandLandmarks[1][0]; // Wrist of hand 2
+            const hand1 = results.multiHandLandmarks[0][0]; 
+            const hand2 = results.multiHandLandmarks[1][0];  
             
             const distance = Math.sqrt(Math.pow(hand1.x - hand2.x, 2) + Math.pow(hand1.y - hand2.y, 2));
 
-            if (distance < 0.2) { // "Hug" threshold
+            if (distance < 0.2) { 
                 card.style.display = 'block';
                 prompt.style.display = 'none';
-                canvasCtx.fillStyle = "rgba(255, 215, 0, 0.1)"; // Glow effect
+                canvasCtx.fillStyle = "rgba(255, 215, 0, 0.1)"; // 
                 canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
             }
         }
